@@ -1,21 +1,28 @@
-# SSL Checker
+# Python SSL/TLS Checker
 #### Python script that collects SSL/TLS information from hosts
 
 
 
 ## About
 
-It's a simple script running in python that collects SSL/TLS information then it returns the group of information in JSON. It can also connect through your specified SOCKS server.
+It's a simple script running in Python that collects SSL/TLS information and then returns the group of information in JSON. It can also connect through your specified SOCKS server.
 
-One of the good things about this script is that it will fully analyze the SSL certificate for security issues and will include the report in the output, CSV, HTML, or a JSON file.
+One of the good things about this script is that it will fully analyze the SSL certificate for security issues and include the report in the output, CSV, HTML, or JSON file.
 
 
+## Online API Based Version
+
+You can simply go to [https://ssl-checker.io](https://ssl-checker.io) or use the following curl command:
+
+`curl https://ssl-checker.io/api/v1/check/example.com`
 
 ## Requirements
 
 `pip install -r requirements.txt`
 
+Or by pip installation:
 
+`pip install python-ssl-checker`
 
 ## Usage
 
@@ -24,13 +31,13 @@ One of the good things about this script is that it will fully analyze the SSL c
 usage: ssl_checker.py (-H [HOSTS [HOSTS ...]] | -f HOST_FILE) [-s HOST:PORT]
                       [-c FILENAME.CSV] [-j] [-S] [-x] [-J] [-a] [-v] [-h]
 
-Collects useful information about given host's SSL certificates.
+Collects useful information about the given host's SSL certificates.
 
 optional arguments:
   -H [HOSTS [HOSTS ...]], --host [HOSTS [HOSTS ...]]
                         Hosts as input separated by space
   -f HOST_FILE, --host-file HOST_FILE
-                        Hosts as input from file
+                        Hosts as input from a file
   -s HOST:PORT, --socks HOST:PORT
                         Enable SOCKS proxy for connection
   -c FILENAME.CSV, --csv FILENAME.CSV
@@ -45,26 +52,25 @@ optional arguments:
 ```
 
 
-
-Port is optional here. The script will use 443 if not specified.
+The port is optional here. The script will use 443 if not specified.
 
 `-f, --host-file` File containing hostnames for input
 
 `-H, --host ` Enter the hosts separated by space
 
-`-s, --socks ` Enable connection through SOCKS server
+`-s, --socks ` Enable connection through the SOCKS server
 
 `-c, --csv ` Enable CSV file export by specifying filename.csv after this argument
 
-`-j, --json ` Use this if you want to only have the result in JSON
+`-j, --json ` Use this if you want only to have the result in JSON
 
-`-S, --summary ` This argument will show quick summary in the output
+`-S, --summary ` This argument will show a quick summary of the output
 
 `-x, --html ` Enable HTML file export
 
 `-J, --json-save` Use this if you want to save as JSON file per host
 
-`-a, --analyze` This argument will include security analyze on the certificate. Takes more time. No result means failed to analyze. 
+`-a, --analyze` This argument will include security analysis on the certificate. Takes more time. No result means failure to analyze. 
 
 `-v, --verbose` Shows more output. Good for troubleshooting.
 
@@ -79,7 +85,7 @@ narbeh@narbeh-laptop:~/ssl-checker$ ./ssl_checker.py -H time.com github.com:443
 +---------------------+
 | Analyzing 2 host(s) |
 +---------------------+
-	[+] time.com
+	[✓] time.com
 	-------------
 		Issued domain: time.com
 		Issued to: None
@@ -93,12 +99,12 @@ narbeh@narbeh-laptop:~/ssl-checker$ ./ssl_checker.py -H time.com github.com:443
 		Certificate version: 2
 		Certificate algorithm: sha256WithRSAEncryption
 		Expired: False
-		Certificate SAN's: 
+		Certificate SANs: 
 		 \_ DNS:time.com
 		 \_ DNS:*.time.com
 
 
-	[+] github.com
+	[✓] github.com
 	---------------
 		Issued domain: github.com
 		Issued to: GitHub, Inc.
@@ -112,7 +118,7 @@ narbeh@narbeh-laptop:~/ssl-checker$ ./ssl_checker.py -H time.com github.com:443
 		Certificate version: 2
 		Certificate algorithm: sha256WithRSAEncryption
 		Expired: False
-		Certificate SAN's: 
+		Certificate SANs: 
 		 \_ DNS:github.com
 		 \_ DNS:www.github.com
 
@@ -122,13 +128,11 @@ narbeh@narbeh-laptop:~/ssl-checker$ ./ssl_checker.py -H time.com github.com:443
 +-------------------------------------------------------------------------------------------+
 ```
 
-NOTE: Keep in mind that if the certificate has less than 15 days validity, the script will consider it as a warning in the summary.
-
-
+NOTE: Keep in mind that if the certificate has less than 15 days of validity, the script will consider it as a warning in the summary.
 
 ## Censored?
 
-No problem. Pass `-s/--socks` argument to the script with `HOST:PORT` format to connect through SOCKS proxy.
+No problem. Pass `-s/--socks` argument to the script with `HOST:PORT` format to connect through the SOCKS proxy.
 
 ```
 narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H facebook.com
@@ -136,7 +140,7 @@ narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H facebook.com
 |Analyzing 1 host(s)|
 +-------------------+
 
-	[-] facebook.com         Failed: [Errno 111] Connection refused
+	[✗] facebook.com         Failed: [Errno 111] Connection refused
 
 +-------------------------------------------------------------------------------------------+
 | Successful: 0 | Failed: 1 | Valid: 0 | Warning: 0 | Expired: 0 | Duration: 0:00:04.109058 |
@@ -146,7 +150,7 @@ narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H facebook.com -s localhost:9
 +---------------------+
 | Analyzing 1 host(s) |
 +---------------------+
-	[+] facebook.com
+	[✓] facebook.com
 	-----------------
 		Issued domain: *.facebook.com
 		Issued to: Facebook, Inc.
@@ -160,7 +164,7 @@ narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H facebook.com -s localhost:9
 		Certificate version: 2
 		Certificate algorithm: sha256WithRSAEncryption
 		Expired: False
-		Certificate SAN's: 
+		Certificate SANs: 
 		 \_ DNS:*.facebook.com
 		 \_ DNS:*.facebook.net
 		 \_ DNS:*.fbcdn.net
@@ -180,10 +184,9 @@ narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H facebook.com -s localhost:9
 ```
 
 
-
 ## Quick Summary
 
-Sometimes you need to run the script and get the quick summary of the hosts. By passing `-S/--summary` you will get the quick overview of the result.
+Sometimes you need to run the script and get a quick summary of the hosts. You will get a quick overview of the result by passing `-S/--summary`.
 
 ```
 narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H narbeh.org:443 test.com twitter.com -S
@@ -191,7 +194,6 @@ narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H narbeh.org:443 test.com twi
 | Successful: 3 | Failed: 0 | Valid: 3 | Warning: 0 | Expired: 0 | Duration: 0:00:01.958670 |
 +-------------------------------------------------------------------------------------------+
 ```
-
 
 
 ## Security Analyze
@@ -206,7 +208,7 @@ narbeh@narbeh-xps:~/ssl-checker$ ./ssl_checker.py -H narbeh.org:443 -a
 
 Warning: -a/--analyze is enabled. It takes more time...
 
-	[+] narbeh.org
+	[✓] narbeh.org
 
 		Issued domain: narbeh.org
 		Issued to: None
@@ -220,7 +222,7 @@ Warning: -a/--analyze is enabled. It takes more time...
 		Certificate grade: A
 		Poodle vulnerability: False
 		Heartbleed vulnerability: False
-		Hearbeat vulnerability: True
+		Heartbeat vulnerability: True
 		Freak vulnerability: False
 		Logjam vulnerability: False
 		Drown vulnerability: False
@@ -233,7 +235,7 @@ Warning: -a/--analyze is enabled. It takes more time...
 
 
 
-## JSON, HTML and CSV Output
+## JSON, HTML, and CSV Output
 
 Example only with the `-j/--json` argument which shows the JSON only. Perfect for piping to another tool.
 
@@ -261,15 +263,15 @@ validity_days,90
 cert_sn,338163108483756707389368573553026254634358
 ```
 
-Finally, if you want to export JSON's output per host in a separated file, use `-J/--json-save`. This will export JSON's output per host. 
-
-
+Finally, if you want to export JSON's output per host in a separate file, use `-J/--json-save`. This will export JSON's output per host. 
 
 # As a Python Module
 
-Simply import the `ssl_checker.py` into your python script and use it as a module.
+Install with pip or import the `ssl_checker.py` into your Python script and use it as a module.
 
-```
+`pip install python-ssl-checker`
+
+```python
 from ssl_checker import SSLChecker
 
 SSLChecker = SSLChecker()
@@ -280,21 +282,19 @@ args = {
 SSLChecker.show_result(SSLChecker.get_args(json_args=args))
 ```
 
-
-
 # Docker
 
 ##### From the Docker Hub
 
-```
+```shell
 $ docker run -it --rm narbehaj/ssl-checker -H twitter.com
 ```
 
 ##### Build your own Dockerfile
 
-If you want to run this script via docker, simply do create your image and run once:
+If you want to run this script via docker, create your image and run it once:
 
-```
+```shell
 $ docker build -t ssl-checker .
 $ docker run -it --rm ssl-checker -H twitter.com
 ```
@@ -303,7 +303,5 @@ $ docker run -it --rm ssl-checker -H twitter.com
 
 ## Todo
 
-- Enable timeout for connections and handshakes
 - Make print_status cleaner and smarter
 - Add certificate chain validation
-

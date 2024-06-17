@@ -5,7 +5,6 @@ import json
 
 from argparse import ArgumentParser, SUPPRESS
 from datetime import datetime
-from ssl import PROTOCOL_TLSv1
 from time import sleep
 from csv import DictWriter
 
@@ -33,33 +32,28 @@ class SSLChecker:
     total_failed = 0
     total_warning = 0
 
-    def get_cert(self, host, port, user_args):
+    def get_cert(self, host, port, socks_host=None, socks_port=None):
         """Connection to the host."""
-        if user_args.socks:
+        if socks_host:
             import socks
-            if user_args.verbose:
-                print('{}Socks proxy enabled{}\n'.format(Clr.YELLOW, Clr.RST))
 
-            socks_host, socks_port = self.filter_hostname(user_args.socks)
             socks.setdefaultproxy(socks.PROXY_TYPE_SOCKS5, socks_host, int(socks_port), True)
             socket.socket = socks.socksocket
 
-        if user_args.verbose:
-            print('{}Connecting to socket{}\n'.format(Clr.YELLOW, Clr.RST))
-
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        osobj = SSL.Context(PROTOCOL_TLSv1)
+        osobj = SSL.Context(SSL.TLSv1_2_METHOD)
+        sock.settimeout(5)
         sock.connect((host, int(port)))
+        sock.settimeout(None)
         oscon = SSL.Connection(osobj, sock)
         oscon.set_tlsext_host_name(host.encode())
         oscon.set_connect_state()
         oscon.do_handshake()
         cert = oscon.get_peer_certificate()
+        resolved_ip = socket.gethostbyname(host)
         sock.close()
-        if user_args.verbose:
-            print('{}Closing socket{}\n'.format(Clr.YELLOW, Clr.RST))
 
-        return cert
+        return cert, resolved_ip
 
     def border_msg(self, message):
         """Print the message in the box."""
@@ -128,13 +122,14 @@ class SSLChecker:
         san = san.replace(',', ';')
         return san
 
-    def get_cert_info(self, host, cert):
+    def get_cert_info(self, host, cert, resolved_ip):
         """Get all the information about cert and create a JSON file."""
         context = {}
 
         cert_subject = cert.get_subject()
 
         context['host'] = host
+        context['resolved_ip'] = resolved_ip
         context['issued_to'] = cert_subject.CN
         context['issued_o'] = cert_subject.O
         context['issuer_c'] = cert.get_issuer().countryName
@@ -183,10 +178,11 @@ class SSLChecker:
 
     def print_status(self, host, context, analyze=False):
         """Print all the usefull info about host."""
-        print('\t{}[+]{} {}\n\t{}'.format(Clr.GREEN, Clr.RST, host, '-' * (len(host) + 5)))
+        print('\t{}[\u2713]{} {}\n\t{}'.format(Clr.GREEN if context[host]['cert_valid'] else Clr.RED, Clr.RST, host, '-' * (len(host) + 5)))
         print('\t\tIssued domain: {}'.format(context[host]['issued_to']))
         print('\t\tIssued to: {}'.format(context[host]['issued_o']))
         print('\t\tIssued by: {} ({})'.format(context[host]['issuer_o'], context[host]['issuer_c']))
+        print('\t\tServer IP: {}'.format(context[host]['resolved_ip']))
         print('\t\tValid from: {}'.format(context[host]['valid_from']))
         print('\t\tValid to: {} ({} days left)'.format(context[host]['valid_till'], context[host]['valid_days_to_expire']))
         print('\t\tValidity days: {}'.format(context[host]['validity_days']))
@@ -206,7 +202,7 @@ class SSLChecker:
             print('\t\tDrown vulnerability: {}'.format(context[host]['drownVulnerable']))
 
         print('\t\tExpired: {}'.format(context[host]['cert_exp']))
-        print('\t\tCertificate SAN\'s: ')
+        print('\t\tCertificate SANs: ')
 
         for san in context[host]['cert_sans'].split(';'):
             print('\t\t \\_ {}'.format(san.strip()))
@@ -236,8 +232,17 @@ class SSLChecker:
                 continue
 
             try:
-                cert = self.get_cert(host, port, user_args)
-                context[host] = self.get_cert_info(host, cert)
+                # Check if socks should be used
+                if user_args.socks:
+                    if user_args.verbose:
+                        print('{}Socks proxy enabled, connecting via proxy{}\n'.format(Clr.YELLOW, Clr.RST))
+
+                    socks_host, socks_port = self.filter_hostname(user_args.socks)
+                    cert, resolved_ip = self.get_cert(host, port, socks_host, socks_port)
+                else:
+                    cert, resolved_ip = self.get_cert(host, port)
+
+                context[host] = self.get_cert_info(host, cert, resolved_ip)
                 context[host]['tcp_port'] = int(port)
 
                 # Analyze the certificate if enabled
@@ -247,12 +252,14 @@ class SSLChecker:
                 if not user_args.json_true and not user_args.summary_true:
                     self.print_status(host, context, user_args.analyze)
             except SSL.SysCallError:
+                context[host] = 'failed'
                 if not user_args.json_true:
-                    print('\t{}[-]{} {:<20s} Failed: Misconfigured SSL/TLS\n'.format(Clr.RED, Clr.RST, host))
+                    print('\t{}[\u2717]{} {:<20s} Failed: Misconfigured SSL/TLS\n'.format(Clr.RED, Clr.RST, host))
                     self.total_failed += 1
             except Exception as error:
+                context[host] = 'failed'
                 if not user_args.json_true:
-                    print('\t{}[-]{} {:<20s} Failed: {}\n'.format(Clr.RED, Clr.RST, host, error))
+                    print('\t{}[\u2717]{} {:<20s} Failed: {}\n'.format(Clr.RED, Clr.RST, host, error))
                     self.total_failed += 1
             except KeyboardInterrupt:
                 print('{}Canceling script...{}\n'.format(Clr.YELLOW, Clr.RST))
@@ -320,7 +327,7 @@ class SSLChecker:
     def get_args(self, json_args={}):
         """Set argparse options."""
         parser = ArgumentParser(prog='ssl_checker.py', add_help=False,
-                                description="""Collects useful information about given host's SSL certificates.""")
+                                description="""Collects useful information about the given host's SSL certificates.""")
 
         if len(json_args) > 0:
             args = parser.parse_args()
@@ -338,7 +345,7 @@ class SSLChecker:
         group.add_argument('-H', '--host', dest='hosts', nargs='*',
                            required=False, help='Hosts as input separated by space')
         group.add_argument('-f', '--host-file', dest='host_file',
-                           required=False, help='Hosts as input from file')
+                           required=False, help='Hosts as input from a file')
         parser.add_argument('-s', '--socks', dest='socks',
                             default=False, metavar='HOST:PORT',
                             help='Enable SOCKS proxy for connection')

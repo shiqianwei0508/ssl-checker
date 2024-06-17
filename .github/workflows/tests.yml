@@ -1,15 +1,14 @@
-name: Python SSL Checker
+name: Python SSL Checker Tests
 
 on:
   push:
     branches: 
-      - master
+      - '*'
+  pull_request: {}
 
 jobs:
-  build:
-
+  build-and-test:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python 3.8
@@ -36,6 +35,10 @@ jobs:
     - name: Test JSON output
       run: |
         python ssl_checker.py -H google.com -j
+    - name: Test read list from file
+      run: |
+        echo -e "google.com\ntwitter.com" > list
+        python ssl_checker.py -f list
     - name: Test CSV output
       run: |
         python ssl_checker.py -H google.com -c test.csv
